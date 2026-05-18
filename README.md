@@ -1,6 +1,6 @@
 # ⚽ Top 5 European Leagues 25/26 Stats Scraper
 
-Dự án thu thập tự động dữ liệu thống kê cầu thủ của **Top 5 giải vô địch quốc gia hàng đầu Châu Âu** (Premier League, La Liga, Serie A, Bundesliga, Ligue 1) mùa giải 2025/2026 từ hệ thống dữ liệu nội bộ của Sofascore. Toàn bộ dữ liệu được tự động phân trang, làm sạch và xuất ra file định dạng CSV sẵn sàng cho việc phân tích dữ liệu (Data Analysis).
+Dự án thu thập tự động dữ liệu thống kê cầu thủ của **Top 5 giải vô địch quốc gia hàng đầu Châu Âu** (Premier League, La Liga, Serie A, Bundesliga, Ligue 1) mùa giải 2025/2026 từ hệ thống dữ liệu nội bộ của Sofascore. Toàn bộ dữ liệu được tự động phân trang, làm sạch, tính toán các chỉ số nâng cao (Per Match, Per 90) và xuất ra file định dạng CSV sẵn sàng cho việc phân tích dữ liệu (Data Analysis).
 
 ---
 
@@ -21,7 +21,7 @@ Dự án thu thập tự động dữ liệu thống kê cầu thủ của **Top
 Các trang thống kê thể thao lớn thường bảo vệ dữ liệu rất nghiêm ngặt bằng các công nghệ chống Bot (như Cloudflare, Akamai). Dự án này ra đời nhằm:
 1. **Mục đích học tập:** Áp dụng kỹ thuật Web Scraping nâng cao, vượt qua hệ thống chống Bot bằng cách giả mạo TLS fingerprint của trình duyệt thực.
 2. **Cung cấp dữ liệu sạch:** Lấy trực tiếp dữ liệu thô (Raw JSON) chuẩn xác 100% từ API nội bộ mà không cần cào (parse) mã nguồn HTML phức tạp.
-3. **Phục vụ phân tích:** Tạo ra bộ dataset khổng lồ và đồng nhất về Tấn công, Phòng ngự, Chuyền bóng và Thủ môn của cả 5 giải đấu để phục vụ cho các bài toán phân tích thể thao (Sports Analytics).
+3. **Phục vụ phân tích chuyên sâu:** Tạo ra bộ dataset khổng lồ (hơn 60 chỉ số) gộp chung cả Tấn công, Phòng ngự, Chuyền bóng. Đặc biệt, hệ thống tự động hỗ trợ quy đổi chỉ số sang Trung bình mỗi trận (Per Match) và Trung bình mỗi 90 phút (Per 90).
 
 ---
 
@@ -35,7 +35,7 @@ Các trang thống kê thể thao lớn thường bảo vệ dữ liệu rất n
 
 **3. Clone dự án về máy**
 ```bash
-git clone https://github.com/tinppb/Top5-Leagues-Scraper-25-26.git
+git clone [https://github.com/tinppb/Top5-Leagues-Scraper-25-26.git](https://github.com/tinppb/Top5-Leagues-Scraper-25-26.git)
 cd Top5-Leagues-Scraper-25-26
 ```
 
@@ -57,50 +57,56 @@ pip install -r requirements.txt
 
 ## Hướng Dẫn Sử Dụng
 
-**Cách 1: Chạy toàn bộ tiến trình cho Top 5 giải đầu hàng đầu Châu Âu**
-Sử dụng file điều phối chính. Hệ thống sẽ tự động quét qua 5 giải đấu, thu thập 4 nhóm chỉ số cho từng giải.
+Kịch bản giờ đây được thiết kế gộp (All-in-One) và nhận 4 tham số đầu vào. Cú pháp: 
+`python crawler/full_stats.py [Tên_Giải] [Tournament_ID] [Season_ID] [Kiểu_Thống_Kê]`
+
+*(Lưu ý: Kiểu thống kê hỗ trợ: `total`, `perMatch`, `per90`)*
+
+**Ví dụ 1: Lấy dữ liệu Tổng cả mùa giải của Premier League (Mặc định)**
 ```bash
-python main.py
+python crawler/full_stats.py Premier_League 17 76986 total
 ```
 
-**Cách 2: Chạy từng script đơn lẻ cho một giải cụ thể**
-Các script con giờ đây nhận tham số đầu vào linh hoạt. Cú pháp: `python crawler/<tên_file>.py [Tên_Giải] [Tournament_ID] [Season_ID]`.
-Ví dụ, nếu chỉ muốn lấy chỉ số Tấn công của La Liga:
+**Ví dụ 2: Lấy dữ liệu Trung bình mỗi trận của La Liga**
 ```bash
-python crawler/attack.py La_Liga 8 77559
+python crawler/full_stats.py La_Liga 8 77559 perMatch
 ```
-*(Nếu chạy không truyền tham số `python crawler/attack.py`, hệ thống sẽ mặc định cào giải Premier League).*
 
-**Kết quả:** Dữ liệu Raw (JSON) được backup tại `data/raw/`. File CSV sạch sẵn sàng sử dụng được lưu tại `data/processed/`.
+**Ví dụ 3: Lấy dữ liệu Trung bình mỗi 90 phút (Chuyên dùng cho Scouting)**
+```bash
+python crawler/full_stats.py Premier_League 17 76986 per90
+```
+
+**Kết quả:** Dữ liệu Raw (JSON) được backup tại `data/raw/`. File CSV sạch, đã được tính toán toán học, lưu tại `data/processed/` với tên file tương ứng (VD: `Premier_League_PER90_STATS.csv`).
 
 ---
 
 ## Kiến Trúc Dự Án
-Dự án được thiết kế theo Module linh hoạt:
-- **Orchestrator (`main.py`):** Đóng vai trò điều phối tổng, chứa từ điển (`Dictionary`) lưu trữ ID của 5 giải đấu. Gọi tuần tự các script con thông qua thư viện `subprocess` và tham số dòng lệnh `sys.argv`.
-- **Workers (`crawler/*.py`):** Chứa các script độc lập. Nhận thông số giải đấu từ `main.py`, xử lý phân trang (pagination) và parse JSON cho từng nhóm chỉ số.
+Dự án được cấu trúc lại để tối ưu hóa quy trình Data Engineering (ETL):
+- **Worker (`crawler/full_stats.py`):** Kịch bản All-in-One độc lập. Nó sẽ quét qua 4 vị trí (Thủ môn, Hậu vệ, Tiền vệ, Tiền đạo), ép Server trả về 60+ chỉ số.
+- **Data Transformation:** Tích hợp bộ xử lý tự động chia trung bình dựa trên số trận/phút thi đấu, đồng thời thông minh giữ nguyên các cột định dạng phần trăm (%).
 - **Data Layer (`data/`):** Tách biệt rõ ràng giữa Dữ liệu thô (`raw/` JSON) dùng để đối chiếu backup và Dữ liệu đã xử lý (`processed/` CSV) dành cho End-user.
 
 ---
 
 ## Luồng Dữ Liệu
-Quy trình xử lý dữ liệu của từng Worker tuân theo các bước sau:
+Quy trình xử lý dữ liệu của hệ thống tuân theo các bước sau:
 1. **Khởi tạo Request:** Gửi HTTP GET request tới endpoint của Sofascore kèm các headers (User-Agent thực) và thông số `impersonate="chrome124"` qua `curl_cffi`.
-2. **Xử lý Phân trang:** Vòng lặp `while True` liên tục tăng biến `offset` lên 20 (bằng với `limit`). Vòng lặp sẽ dừng (break) khi API trả về danh sách rỗng `[]`.
-3. **Backup Raw Data:** Toàn bộ dữ liệu JSON trả về ở mỗi trang được lưu thành file tĩnh tại `data/raw/<chỉ_số>/` để dự phòng.
-4. **Data Parsing:** Trích xuất thông tin Cầu thủ, Đội bóng, Giải đấu và các chỉ số chuyên môn cụ thể (`stats.get("...")`) đưa vào danh sách Python.
-5. **Xuất CSV:** Chuyển đổi dữ liệu sang Pandas DataFrame, đánh số thứ tự (Rank/Index) và lưu thành file CSV định dạng chuẩn `utf-8-sig`.
+2. **Xử lý Phân trang:** Vòng lặp `while True` liên tục tăng biến `offset` lên 20. Vòng lặp dừng khi API trả về danh sách rỗng `[]`.
+3. **Backup Raw Data:** Toàn bộ dữ liệu JSON trả về ở mỗi trang được lưu thành file tĩnh tại `data/raw/` để dự phòng.
+4. **Data Parsing & Transform (ETL):** Trích xuất thông tin Cầu thủ. Kích hoạt hàm tính toán nội bộ để tự động chia các thông số Tấn công/Phòng ngự/Chuyền bóng nếu người dùng chọn mode `perMatch` hoặc `per90`.
+5. **Xuất CSV:** Chuyển đổi dữ liệu sang Pandas DataFrame, sắp xếp theo điểm Rating giảm dần, đánh số thứ tự (Rank/Index) và lưu thành file CSV định dạng chuẩn `utf-8-sig`.
 
 ---
 
 ## Từ Điển Dữ Liệu
-Các file CSV đầu ra bao gồm các trường dữ liệu chính:
+Các file CSV đầu ra chứa hơn 60 biến số gộp chung, bao gồm các trường dữ liệu tiêu biểu:
 
-* **Tất cả các tệp đều có:** `#` (Xếp hạng), `League` (Tên giải đấu), `Team` (Tên đội bóng), `Name` (Tên cầu thủ), `Average Sofascore rating` (Điểm đánh giá trung bình).
+* **Định danh chung:** `#` (Xếp hạng), `League`, `Team`, `Name`, `Position` (Tự động gán nhãn vị trí), `Sofascore Rating`.
 * **Attack (Tấn công):** `Goals`, `Expected goals (xG)`, `Big chances missed`, `Succ. dribbles`, `Total shots`, `Goal conversion %`.
-* **Defense (Phòng ngự):** `Tackles`, `Interceptions`, `Clearances`, `Errors leading to goal`, `Blocked shots` (outfielderBlock).
+* **Defense (Phòng ngự):** `Tackles`, `Interceptions`, `Clearances`, `Errors leading to goal`, `Blocked shots`.
 * **Passing (Chuyền bóng):** `Big chances created`, `Assists`, `Accurate passes`, `Accurate passes %`, `Key passes`.
-* **Goalkeeping (Thủ môn):** `Total saves`, `Clean sheets`, `Penalties saved`, `Saves from inside box`, `Runs out`.
+* **Chỉ số gốc & Tranh chấp:** `Appearances` (Số trận), `Minutes played`, `Total saves`, `Total duels won`, `Ground duels won`.
 
 ---
 
@@ -110,9 +116,9 @@ Các file CSV đầu ra bao gồm các trường dữ liệu chính:
 - **Tham số chính (Parameters):**
   - `limit`: Số lượng bản ghi mỗi trang (Mặc định: 20).
   - `offset`: Điểm bắt đầu của trang (0, 20, 40...).
-  - `order`: Tiêu chí sắp xếp (VD: `-goals`, `-tackles`). Dấu `-` biểu thị sắp xếp giảm dần.
-  - `accumulation`: Đặt là `total` để lấy tổng số của cả mùa giải.
-  - `fields`: Ép API trả về đích danh các cột dữ liệu cần thiết (đồng bộ hóa dữ liệu, tránh bị API ẩn trường).
+  - `order`: Tiêu chí sắp xếp (`-rating`). Dấu `-` biểu thị sắp xếp giảm dần.
+  - `accumulation`: Luôn đặt là `total` để ép Server trả số gốc, việc chia trung bình được code xử lý nội bộ.
+  - `fields`: Ép API trả về đích danh 60+ cột dữ liệu cần thiết.
   - `filters`: Lọc dữ liệu ngay từ phía Server. (VD: `position.in.G` dùng để lấy chính xác danh sách các Thủ môn).
 
 *Lưu ý: API này là tài sản nội bộ của Sofascore. Việc truy cập thông qua script chỉ phục vụ mục đích học tập và nghiên cứu cá nhân.*
@@ -124,29 +130,26 @@ Các file CSV đầu ra bao gồm các trường dữ liệu chính:
 ```text
 TOP 5 LEAGUE EU(25_26)/
 │
-├── .venv/                    # Môi trường ảo Python
-├── crawler/                  # Chứa các kịch bản cào dữ liệu (Workers)
-│   ├── full_stats.py         # Kịch bản chính: Cào tổng hợp 40+ chỉ số (All-in-One)
-│   ├── attack.py             # Kịch bản module: Chỉ cào chỉ số Tấn công
-│   ├── defense.py            # Kịch bản module: Chỉ cào chỉ số Phòng ngự
-│   ├── passing.py            # Kịch bản module: Chỉ cào chỉ số Chuyền bóng
-│   └── goalkeeping.py        # Kịch bản module: Chỉ cào chỉ số Thủ môn
+├── .venv/                    # Môi trường ảo 
+├── crawler/                  
+│   ├── attack.py             
+│   ├── defense.py            
+│   ├── full_stats.py         # Tổng hợp 40+ chỉ số
+│   ├── goalkeeping.py        
+│   └── passing.py            
 │
-├── data/                     # Data Lake & Data Warehouse
-│   ├── processed/            # Dữ liệu CSV đã làm sạch
-│   │   ├── Premier_League_FULL_STATS.csv
-│   │   ├── La_Liga_FULL_STATS.csv
-│   │   └── ... (Serie A, Bundesliga, Ligue 1)
+├── data/                     
+│   ├── processed/            # Dữ liệu CSV 
 │   └── raw/                  # Backup dữ liệu JSON thô từ API
-│       ├── full_stats/
-│       └── ...
 │
 ├── logs/                     
 ├── notebooks/       
 │
+├── .gitignore
 ├── main.py                  
 ├── README.md                 
-└── requirements.txt
+├── requirements.txt
+└── transform.py              
 ```
 
 ---
@@ -157,13 +160,13 @@ TOP 5 LEAGUE EU(25_26)/
 - **Nguyên nhân:** Địa chỉ IP mạng của bạn đang bị chặn truy cập vào Sofascore, hoặc nhà mạng (ISP) chặn kết nối.
 - **Khắc phục:** Hãy bật phần mềm **Cloudflare WARP (1.1.1.1)** hoặc **VPN** trên máy tính rồi chạy lại script.
 
-**2. Lỗi `ModuleNotFoundError: No module named 'curl_cffi'` khi chạy `main.py`**
-- **Nguyên nhân:** Lệnh subprocess không tìm thấy thư viện trong môi trường ảo.
-- **Khắc phục:** Đảm bảo đã kích hoạt môi trường ảo (ví dụ: `crawler\Scripts\activate`). `main.py` sử dụng `sys.executable` để tự động trỏ đúng vào Python của môi trường ảo đang chạy.
+**2. Lỗi `ModuleNotFoundError: No module named 'curl_cffi'` khi chạy code**
+- **Nguyên nhân:** Code không tìm thấy thư viện trong môi trường ảo.
+- **Khắc phục:** Đảm bảo đã kích hoạt môi trường ảo (ví dụ: `.venv\Scripts\activate`) trước khi chạy lệnh.
 
 **3. Code chạy bị treo hoặc báo lỗi HTTP 429 Too Many Requests**
 - **Nguyên nhân:** Gửi request quá nhanh khiến cơ chế Anti-Bot phát hiện. 
-- **Khắc phục:** Tuyệt đối giữ nguyên hàm gọi qua thư viện `curl_cffi`. Đảm bảo trong code luôn có `time.sleep()` để mô phỏng thao tác của người thật.
+- **Khắc phục:** Tuyệt đối giữ nguyên hàm gọi qua thư viện `curl_cffi`. Đảm bảo trong code luôn có lệnh `time.sleep()` để mô phỏng thao tác của người thật.
 
 **4. Cột dữ liệu toàn số 0**
 - **Nguyên nhân:** Tên tham số khai báo trong `fields` không khớp với Database của Sofascore.
