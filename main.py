@@ -3,53 +3,67 @@ import sys
 import time
 
 # ==========================================
-# 1. TỪ ĐIỂN TOP 5 GIẢI ĐẤU CHÂU ÂU (Mùa 25/26)
+# 1. TỪ ĐIỂN TOP 5 GIẢI ĐẤU CÁC MÙA (25/26, 24/25, 23/24)
 # ==========================================
-# Cấu trúc: "Tên_Giải": ("Tournament_ID", "Season_ID")
-# Lưu ý: Season ID có thể thay đổi theo từng năm, bạn có thể update lại nếu cần.
 TOP_5_LEAGUES = {
-    "Premier_League": ("17", "76986"),
-    "La_Liga": ("8", "77559"),
-    "Serie_A": ("23", "76457"),     # ID giải Ý
-    "Bundesliga": ("35", "77333"),  # ID giải Đức
-    "Ligue_1": ("34", "77356")      # ID giải Pháp
+    "Premier_League": ("17", {"25_26": "76986", "24_25": "61627", "23_24": "52186"}),
+    "La_Liga": ("8", {"25_26": "77559", "24_25": "61643", "23_24": "52376"}),
+    "Serie_A": ("23", {"25_26": "76457", "24_25": "63515", "23_24": "52760"}),     
+    "Bundesliga": ("35", {"25_26": "77333", "24_25": "63516", "23_24": "52608"}),  
+    "Ligue_1": ("34", {"25_26": "77356", "24_25": "61736", "23_24": "52571"})      
 }
 
 def main():
+    # Nhận kiểu thống kê từ Terminal. Nếu không gõ gì, MẶC ĐỊNH sẽ là per90
+    acc_type = sys.argv[1] if len(sys.argv) > 1 else "per90"
+
+    # Kiểm tra xem người dùng gõ lệnh có chuẩn không
+    if acc_type not in ["total", "perMatch", "per90"]:
+        print(f"❌ Kiểu thống kê '{acc_type}' không hợp lệ!")
+        print("👉 Vui lòng chọn một trong các kiểu: total, perMatch, per90")
+        sys.exit()
+
     print("="*60)
-    print("BẮT ĐẦU CHIẾN DỊCH CÀO DATA TOP 5 EUROPEAN LEAGUES (MÙA 25/26)!")
+    print(f"🤖 PIPELINE: BẮT ĐẦU CÀO DỮ LIỆU {acc_type.upper()} CHO 5 GIẢI ĐẤU")
     print("="*60)
 
-    total_leagues = len(TOP_5_LEAGUES)
-    current = 1
+    total_tasks = len(TOP_5_LEAGUES) * 3
+    current_task = 1
 
-    for league_name, (tour_id, season_id) in TOP_5_LEAGUES.items():
-        print(f"\n[{current}/{total_leagues}] Đang xử lý giải đấu: {league_name.replace('_', ' ')}...")
-        
-        # Tạo câu lệnh gọi file full_stats.py chạy ngầm
-        # sys.executable đảm bảo nó gọi đúng môi trường ảo Python hiện tại
-        command = [sys.executable, "crawler/full_stats.py", league_name, tour_id, season_id]
-        
-        try:
-            # Chạy script con và chờ nó chạy xong
-            subprocess.run(command, check=True)
-            print(f"✅ Hoàn thành giải {league_name.replace('_', ' ')}!")
+    # ==========================================
+    # 2. VÒNG LẶP ĐIỀU PHỐI CÁC GIẢI ĐẤU
+    # ==========================================
+    for league_name, (tour_id, seasons) in TOP_5_LEAGUES.items():
+        for season_name, season_id in seasons.items():
+            print(f"\n[{current_task}/{total_tasks}] Tiến trình: {league_name} | Mùa: {season_name} | Chế độ: {acc_type.upper()}...")
             
-        except subprocess.CalledProcessError as e:
-            print(f"❌ Có lỗi xảy ra khi cào giải {league_name}: {e}")
-        except FileNotFoundError:
-            print(f"❌ Không tìm thấy file 'full_stats.py'.")
-            break
-
-        # Nếu chưa phải là giải đấu cuối cùng, nghỉ ngơi 10 giây để tránh bị block IP
-        if current < total_leagues:
-            print("⏳Nghỉ 5 giây...")
-            time.sleep(5)
+            # Cấu trúc lệnh gửi đi: python crawler/full_stats.py [Giải] [TourID] [SeasonID] [per90/total/perMatch] [SeasonName]
+            command = [
+                sys.executable, 
+                "crawler/full_stats.py", 
+                league_name, 
+                tour_id, 
+                season_id, 
+                acc_type,
+                season_name
+            ]
             
-        current += 1
+            try:
+                # Kích hoạt file phụ bếp chạy
+                subprocess.run(command, check=True)
+                print(f"✅ Hoàn thành xuất sắc giải: {league_name} (Mùa {season_name})!")
+            except subprocess.CalledProcessError as e:
+                print(f"❌ Gặp lỗi khi đang xử lý giải {league_name} (Mùa {season_name}): {e}")
+                
+            # Thời gian nghỉ giãn cách giữa các giải đấu để an toàn cho IP của bạn
+            if current_task < total_tasks:
+                print("⏳ Đang nghỉ 8 giây để làm mát Server...")
+                time.sleep(8)
+                
+            current_task += 1
 
     print("\n" + "="*60)
-    print("BỘ DỮ LIỆU ĐÃ ĐƯỢC LƯU TẠI DATA/PROCESSED/ 🎉")
+    print(f"🎉 CHIẾN DỊCH HOÀN TẤT! TOÀN BỘ FILE _{acc_type.upper()} ĐÃ NẰM TRONG DATA/PROCESSED/ 🎉")
     print("="*60)
 
 if __name__ == "__main__":
